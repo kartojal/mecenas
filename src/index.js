@@ -27,12 +27,9 @@ import {
 } from 'react-router-dom'
 
 
-// export default withRouter(connect(mapStateToProps)(Something))
-
-
 ReactDOM.render((
   <DrizzleContext.Provider drizzle={drizzle}>
-    <Router>
+    <Router basename={`${process.env.PUBLIC_URL}`}>
       <App>
         <Switch>
           <Route exact path='/' component={Home} />

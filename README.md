@@ -147,9 +147,8 @@ If you want to build the production front-end build, run:
 ```
 npm run build
 ```
-Then you can deploy the  dir with the static files into a common web server, github static pages or even IPFS.
-
-## Testing `monthlyWithdral` with timestamp lock function without `truffle test`
+Then you can deploy the `build_webpack` dir with the static files into a common web server or github static pages, a patch is applied for supporting BrowserHistory at Github pages. You can read more about it here `https://github.com/rafrex/spa-github-pages` and here `https://github.com/rockchalkwushock/CRA-gh-pages-deployment`.
+## Testing `monthlyWithdrawal` with timestamp lock function without `truffle test` in localhost
 ### Explanation
 There is one function named `monthlyWithdraw` that allows a content creator withdraw their wage, one time per month if they have subscribed mecenas. This function is tested in the truffle test files but if you want to mannualy test this function in the frontend, without using the test framework, you can do it making some RPC calls to Ganache-CLI. Using the method `evm_increaseTime` you can jump forward in time, taking the first parameter as the amount of time  to increase in seconds, in integer type (not Hex!).
 
