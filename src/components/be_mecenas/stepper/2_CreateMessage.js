@@ -29,11 +29,11 @@ class CreateMessage extends PureComponent {
 
   setName = (e) => {
     e.preventDefault();
-    this.props.setName(value);
+    this.props.setName(e.target.value);
   }
   setMessage = (e) => {
     e.preventDefault();
-    this.props.setMessage(value);
+    this.props.setMessage(e.target.value);
   }
   render() {
     const { classes, creator, message, name } = this.props;
