@@ -1,7 +1,11 @@
 # Mecenas, a final grade project for Consensys Academy 2018
 ## About Mecenas
 
-Mecenas is a decentralized, [Patreon-like,](https://patreon.com) application where content creators (artist, youtubers, streamers, podcasters, editors...) can receive Ether monthly, thanks to their backers, named mecenas. In this way content creators can boost their productivity or creating better content with the help of their followers, without censorship.
+Mecenas is a decentralized, [Patreon-like,](https://patreon.com) mobile friendly application where content creators (artist, youtubers, streamers, podcasters, editors...) can receive Ether monthly, thanks to their backers, named mecenas.
+
+In this way content creators can boost their productivity or creating better content with the help of their followers, without censorship.
+
+**Try it now in Rinkeby testnet, with Chrome + Metamask or Toshi (now Coinbase Wallet) at https://kartojal.github.io/mecenas/**. If using Toshi, remember to change network to Rinkeby, at Settings > Advanced > Active network.
 
 Content creators can give special perks to his backers, like ocult content, mentioning in their videos, or sponsoring.
 

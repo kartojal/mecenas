@@ -25,6 +25,11 @@ const styles = theme => ({
     'min-height': '100%', 
     width: 'auto',
     height: 'auto',
+    '& .video-react-video': {
+      [theme.breakpoints.down('xs')]: {
+        left: -400
+      }
+    }
   },
   callToActionTitle:{
     padding: 10,
