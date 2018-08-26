@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 import 'openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol';
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-
+import 'openzeppelin-solidity/contracts/lifecycle/Destructible.sol';
 /**
  * @title ERC721 token named SubscriptionBadge (SUB) as reward for supporting content creators.
  * 
@@ -13,7 +13,7 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
  * Moreover, it includes approve all functionality using operator terminology
  * @dev see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
  */
-contract BadgesLedger is ERC721Token, Ownable {
+contract BadgesLedger is ERC721Token, Ownable, Destructible {
 
   address public owner;
   address public minter;
@@ -25,16 +25,24 @@ contract BadgesLedger is ERC721Token, Ownable {
     {
     }
 
+    /** @dev Modifier that checks if current msg.sender is minter, throw if not.
+      */
     modifier onlyMinter() {
         require(minter == msg.sender);
         _;
     }
 
+    /** @dev Sets the Minter address. Can be a contract or a normal account. Only callable by owner.
+      * @param minterAddress The minter address to be set.
+      */
     function setMinterAddress(address minterAddress) public onlyOwner {
       minter = minterAddress;
     }
     /**
-    * Custom accessor to create a unique token
+    * @dev Mint an unique token Badge
+    * @param to Address where the token will be allocated after minted.
+    * @param tokenId Unique token identifier
+    * @param tokenURI Token metadata
     */
     function mintSubscriptionBadge(
         address to,
@@ -46,3 +54,4 @@ contract BadgesLedger is ERC721Token, Ownable {
         ERC721Token._setTokenURI(tokenId, tokenURI);
     }
 }
+import 'openzeppelin-solidity/contracts/lifecycle/Destructible.sol';

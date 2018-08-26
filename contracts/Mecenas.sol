@@ -4,13 +4,20 @@ import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import 'openzeppelin-solidity/contracts/math/Math.sol';
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
+import 'openzeppelin-solidity/contracts/lifecycle/Destructible.sol';
 import './libraries/strings.sol';
 import './libraries/Array256Lib.sol';
 import './BadgesLedger.sol';
 
-// ToDO: Explain design patterns used in this contract: fail early, pull over push payment, restrict access, circuit breaker
-
-contract Mecenas is Ownable, Pausable {
+  /**
+    * @title Mecenas
+    * The main mecenas contract. Here is all the main logic to register
+    * content creators and be able to support then via prepaid monthly
+    * subscriptions. There is a percent fee + fixed fee per every subs
+    * that goes to the contract owner to support development. Content
+    * creators can withdraw their wage monthly.
+    */
+contract Mecenas is Ownable, Pausable, Destructible {
   using SafeMath for uint256;
   using Math for uint256;
   using Array256Lib for uint256[];
@@ -69,70 +76,79 @@ contract Mecenas is Ownable, Pausable {
   mapping (bytes32 => address) public contentCreatorAddresses;
   
   /**
-    Emits a new subscription message, from the mecenas to the content creator.
-    It can be showed in the main website or integrated into a streaming platform,
-    to show in live and see the content creator reaction.
-
-    An integration with Twitch could be possible.
+    * @dev Emits a new subscription message, from the mecenas to the content creator.
+    * It can be showed in the main website or integrated into a streaming platform,
+    * to show in live and see the content creator reaction.
+    *
+    * An integration with Twitch could be possible.
    */
   event newSubscriptionMessage(address contentCreatorAddress, bytes32 mecenasNickname, string mecenasMessage);
 
   /**
-    Emits a new content creator. This can be consumed in the webapp to show latest content creators.
-   */
+    * Emits a new content creator. This can be consumed in the webapp to show latest content creators.
+    */
   event newContentCreator(address contentCreatorAddress, bytes32 nickname, string ipfsAvatar);
 
   /**
-    Initialize the contract, sets an owner, a default feePercent and fixedFee.
-   */
+    * @dev Initialize the contract, sets an owner, a default feePercent and fixedFee.
+    */
   constructor() public {
     owner = msg.sender;
     feePercent = 1;
     fixedFee = 0.0006 ether;
   }
-
+  /** @dev Set the badges ledger contract address
+    * @param badgesLedgerAddress the Badges ledger deployed address
+    */
   function setBadgesLedgerContract(address badgesLedgerAddress) public onlyOwner {
     badgesLedger = BadgesLedger(badgesLedgerAddress);
   }
 
   /**
-    Modifier to throw when msg.value is less than contract owner fee;
-   */
+    * @dev Modifier to throw when msg.value is less than contract owner fee;
+    */
   modifier minimumAmount {
     require(msg.value > getMinimumAmount());
     _;
   }
 
   /**
-    Calculate and returns the minimum amount possible to surpass owner fees.
-   */
+    * @dev Calculate and returns the minimum amount possible to surpass owner fees.
+    * @return uint The minimum possible amount to surpass fees.
+    */
   function getMinimumAmount() public view returns(uint) {
     return fixedFee.add(fixedFee.mul(feePercent).div(100));
   }
   /**
-    Function that returns true if first argument is greater than minimum owner fee.
-   */
+    * @dev Function that returns true if first argument is greater than minimum owner fee.
+    * @param amount Test if amount is greater than minimum amount.
+    * @return boolean
+    */
   function greaterThanMinimumAmount(uint amount) public view returns (bool) {
     return amount > getMinimumAmount();
   }
-  /** Owner functions (developer) **/
+
+  /** Owner functions **/
 
   /** 
-    Set fee per content creator subscription
-  */
+    * @dev Set percent fee per content creator subscription.
+    * @param newFee The new percent fee to be set
+    */
   function setPercentFee(uint256 newFee) public onlyOwner {
     feePercent = newFee;
   }
 
   /** 
-    Set fee per content creator subscription
+    * @dev Set fixed fee per content creator subscription.
+    * @param newFee The new fixed fee to be set.
   */
   function setFixedFee(uint256 newFee) public onlyOwner {
-    feePercent = newFee;
+    fixedFee = newFee;
   }
   /**
-    Pay the fee to the contract owner. Returns the remain amount to support the content creator.
-   */
+    * @dev Pay the fee to the contract owner. Returns the remain amount to support the content creator.
+    * @return uint256 Returns the remaining amount after fees.
+    */
   function payFee() private returns(uint256) {
     require(msg.value > getMinimumAmount());
     uint256 currentAmount = msg.value;
@@ -142,14 +158,36 @@ contract Mecenas is Ownable, Pausable {
     ownerBalance = ownerBalance + fee;
     return amountAfterFee;
   }
-  /**
-    Content creator functions
-   */
 
+  /** @dev Withdraw owner fees, only callable by owner.
+    */
+  function withdrawFees() public onlyOwner {
+    // Remember to substract the pending withdraw before
+    // sending to prevent re-entrancy attacks
+    uint256 transferAmount = ownerBalance;
+    ownerBalance -= transferAmount;
+    msg.sender.transfer(transferAmount);
+  }
+
+  /**
+   * Content creator functions
+   */
+  
+  /** @dev Get content creator tiers length, to be able to iterate it later.
+    * @param contentCreatorAddress The content creator address.
+    * @return The length of the array.
+    */
   function getTiersLength(address contentCreatorAddress) public view returns (uint) {
     return suggestPriceTiers[contentCreatorAddress].length;
   }
-
+  
+  /** @dev Get content creator tier content, by index.
+    * @param contentCreatorAddress The content creator address.
+    * @param index The index of the array.
+    * @return title The title of the tier.
+    * @return description The description of the tier.
+    * @return price The price of the tier.
+    */
   function getTier(address contentCreatorAddress, uint index) public view returns (
     string title,
     string description,
@@ -160,7 +198,19 @@ contract Mecenas is Ownable, Pausable {
     description = tier.description;
     price = tier.price;
   }
-
+  
+  /** @dev Content creator getter
+    * @param addressInput The content creator address.
+    * @return nickname The content creator name.
+    * @return description Content creator description.
+    * @return creationTimestamp Creation timestamp
+    * @return payday Next content creator payday date
+    * @return balance Current content creator balance
+    * @return ipfsAvatar Current content creator Avatar IPFS hash
+    * @return totalMecenas The number of subscriptions
+    * @return contentCreatorAddress Address
+    * @return wage The next wage value.
+    */
   function getContentCreator(address addressInput) public view returns (
       bytes32 nickname,
       string description,
@@ -184,12 +234,28 @@ contract Mecenas is Ownable, Pausable {
     wage = calculateNextWage(addressInput);
   }
 
+  /** @dev Content creator getter
+    * @param nickname The content creator nickname.
+    * @return contentCreatorAddress address of content creator.
+    */
   function getContentCreatorAddress(bytes32 nickname) public view returns (
       address contentCreatorAddress
     ) {
     contentCreatorAddress = contentCreatorAddresses[nickname];
   }
 
+  /** @dev Content creator getter
+    * @param nick The content creator nickname.
+    * @return nickname The content creator name.
+    * @return description Content creator description.
+    * @return creationTimestamp Creation timestamp
+    * @return payday Next content creator payday date
+    * @return balance Current content creator balance
+    * @return ipfsAvatar Current content creator Avatar IPFS hash
+    * @return totalMecenas The number of subscriptions
+    * @return contentCreatorAddress Address
+    * @return wage The next wage value.
+    */
   function getContentCreatorByNickname(bytes32 nick) public view returns (
       bytes32 nickname,
       string description,
@@ -213,7 +279,9 @@ contract Mecenas is Ownable, Pausable {
     totalMecenas = contentCreator.mecenasAddresses.length;
     wage = calculateNextWage(contentCreatorAddress);
   }
-
+  /** 
+    * @dev Sets the default price tiers to the current msg.sender
+    */
   function setDefaultPriceTiers() private {
     // Default tiers
     PriceTierSuggestion memory tierSilver = PriceTierSuggestion({
@@ -235,7 +303,11 @@ contract Mecenas is Ownable, Pausable {
     suggestPriceTiers[msg.sender][1] = tierGold;
     suggestPriceTiers[msg.sender][2] = tierPlatinum;
   }
-
+  /** 
+    * @dev Gets the Mecenas Badge name for adding it to the Token URI
+    * @param amount uint256 with the amount.
+    * @param priceTiers The tiers of the content creator.
+    */
   function getSubscriberLevel(uint256 amount, PriceTierSuggestion[3] priceTiers) private pure returns (string){
     bool levelFound = false;
     uint priceTierIndex = 0;
@@ -257,6 +329,11 @@ contract Mecenas is Ownable, Pausable {
     return priceTiers[priceTierIndex].title;
   }
 
+  /** @dev Content creator getter
+    * @param nickname The content creator name.
+    * @param description Content creator description.
+    * @param ipfsAvatar Current content creator Avatar IPFS hash
+    */
   function contentCreatorFactory(bytes32 nickname, string description, string ipfsAvatar) public whenNotPaused {
     ContentCreator storage contentCreator = contentCreators[msg.sender];
     // At least nickname must be greater than zero chars, be unique, and content creator must not exists
@@ -277,7 +354,8 @@ contract Mecenas is Ownable, Pausable {
   }
 
   /**
-    Set a new content creator address, only allowed by content creator itself.
+    * @dev Change the content creator address, only allowed by content creator itself.
+    * @param newAddress The new address to be set.
    */
   function changeContentCreatorAddress(address newAddress) public whenNotPaused {
     ContentCreator memory current = contentCreators[msg.sender];
@@ -287,13 +365,24 @@ contract Mecenas is Ownable, Pausable {
     contentCreators[newAddress] = current;
     contentCreatorAddresses[current.nickname] = newAddress;
   }
-
+  
+  /**
+    * @dev Change the content creator avatar, only allowed by content creator itself.
+    * @param avatarHash The new avatar IPFS hash to be set.
+   */
   function changeAvatar(string avatarHash) public whenNotPaused {
     ContentCreator storage current = contentCreators[msg.sender];
     require(current.payday > 0);
     current.ipfsAvatar = avatarHash;
   }
 
+  /**
+    * @dev Change the content creator tier, by index, only allowed by content creator itself.
+    * @param tierIndex The tier index to change.
+    * @param title The new title name to be set.
+    * @param description The new description to be set.
+    * @param price  The new price to be set.
+   */
   function changeContentCreatorTiers(uint tierIndex, string title, string description, uint256 price) public whenNotPaused {
     ContentCreator storage current = contentCreators[msg.sender];
     // Check if content creator is initialized, price is greater than minimum amount and string params are not empty.
@@ -305,7 +394,10 @@ contract Mecenas is Ownable, Pausable {
       price: price
     });
   }
-
+  /**
+    * @dev Change the content creator description, only allowed by content creator itself.
+    * @param description The new description to be set.
+   */
   function changeDescription(string description) public whenNotPaused {
     ContentCreator storage current = contentCreators[msg.sender];
     require(current.payday > 0);
@@ -313,16 +405,18 @@ contract Mecenas is Ownable, Pausable {
   }
 
   /**
-    Calculare next content creator wage.
-   */
+    * @dev Calculate next content creator wage.
+    * @param contentCreatorAddress Content creator address
+    * @return uint with the next content creator wage.
+    */
   function calculateNextWage(address contentCreatorAddress) public view returns (uint256){
     ContentCreator storage contentCreator = contentCreators[contentCreatorAddress];
     return contentCreator.mecenasSubscriptions[contentCreator.subscriptionIndex].sumElements();
   }
 
   /**
-    Allow content creator to withdraw once the payload date is greater or equal than today. If contract
-    is paused, this function is still reachable for content creators.
+    * @dev Allow content creator to withdraw once the payload date is greater or equal than today. If contract
+    *  is paused, this function is still reachable for content creators.
    */
   function monthlyWithdraw() public {
     ContentCreator storage current = contentCreators[msg.sender];
@@ -344,9 +438,13 @@ contract Mecenas is Ownable, Pausable {
   /** Mecenas functions **/
 
   /**
-    Emit a Mecenas Message event to be consumed in a stream or website. Show the support from the mecenas to the content creator.
-   */
-
+    * @dev Emit a Mecenas Message event to be consumed in a stream or website. Show the support from the mecenas to the content creator.
+    * @param mecenasNickname Mecenas nickname.
+    * @param contentCreatorAddress Content creator address subscription.
+    * @param message Mecenas message.
+    * @param subscriptions Number of months subbed.
+    * @param priceTier The subscription price per month.
+    */
   function broadcastNewSubscription(bytes32 mecenasNickname, address contentCreatorAddress, string message, uint256 subscriptions, uint256 priceTier) private {
     MecenasMessage memory newSubMessage = MecenasMessage({
       mecenasNick: mecenasNickname,
@@ -363,9 +461,13 @@ contract Mecenas is Ownable, Pausable {
   }
 
   /**
-    Support a determined content creator, via a prepaid monthly subscription.
-     You can set any price, regarding the suggested price tiers, and add a support message to the content creator.
-   */
+    * @dev Support a determined content creator, via a prepaid monthly subscription.
+    * You can set any price, regarding the suggested price tiers, and add a support message to the content creator.
+    * @param mecenasNickname Mecenas nickname.
+    * @param contentCreatorAddress Content creator address subscription.
+    * @param message Mecenas message.
+    * @param subscriptions Number of months subbed.
+    */
   function supportContentCreator(address contentCreatorAddress, uint256 subscriptions, string message, bytes32 mecenasNickname) public payable whenNotPaused{
     require(contentCreatorAddress != address(0) && msg.value > 0);
     // Calculate fee and sum to contract owner balance
@@ -396,13 +498,5 @@ contract Mecenas is Ownable, Pausable {
     mecenasTokens.push(Badge({tokenId: tokenId, contentCreatorAddress: contentCreatorAddress}));
     // Send message to the content creator inbox and emit event
     broadcastNewSubscription(mecenasNickname, contentCreatorAddress, message, subscriptions, priceTier);
-  }
-
-  function withdrawFees() public onlyOwner {
-    // Remember to substract the pending withdraw before
-    // sending to prevent re-entrancy attacks
-    uint256 transferAmount = ownerBalance;
-    ownerBalance -= transferAmount;
-    msg.sender.transfer(transferAmount);
   }
 }
