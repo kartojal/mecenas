@@ -1,4 +1,4 @@
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import Divider from '@material-ui/core/Divider';
 import Paper from '@material-ui/core/Paper';
@@ -33,7 +33,7 @@ const styles = theme => ({
   },
 });
 
-class Tier extends PureComponent {
+class Tier extends Component {
   state = {
     loaded: false,
     tiers: [],
@@ -51,9 +51,9 @@ class Tier extends PureComponent {
       const mecenas = drizzle.contracts.Mecenas;
       const rawMinimumFee = await mecenas.methods.getMinimumAmount().call();
       const rawTiers = await Promise.all([
-        mecenas.methods.getTier(address, drizzle.web3.utils.toBN(0)).call(),
-        mecenas.methods.getTier(address, drizzle.web3.utils.toBN(1)).call(),
-        mecenas.methods.getTier(address, drizzle.web3.utils.toBN(2)).call(),
+        mecenas.methods.getTier(address, drizzle.web3.utils.toBN("0")).call(),
+        mecenas.methods.getTier(address, drizzle.web3.utils.toBN("1")).call(),
+        mecenas.methods.getTier(address, drizzle.web3.utils.toBN("2")).call(),
       ]);
 
       const tiers = rawTiers.map(tier => ({
