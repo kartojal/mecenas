@@ -1,0 +1,13 @@
+{
+  "plugins": [
+    "transform-class-properties",
+    "transform-object-rest-spread",
+    "transform-regenerator"
+  ],
+  "presets": [
+    ["env", { "targets": {
+      "browsers": [ "last 2 versions" ]
+    }}],
+    "react"
+  ]
+}

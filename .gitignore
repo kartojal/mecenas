@@ -1,0 +1,7 @@
+build/
+build_webpack/
+node_modules/
+*.log
+.vscode
+.eslintcache
+package-lock.json

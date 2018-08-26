@@ -1,0 +1,2 @@
+BadgesLedger: 0x63b5cf273c620c911fe4a8a514d64bd69eefc9cb
+Mecenas: 0xa7f63e46c5a36f19afe5f6986422d015fadb871b
