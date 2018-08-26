@@ -1,4 +1,4 @@
-# Mecenas, a final grade project for Consensys Academy 2018
+# Mecenas, a final project for Consensys Academy 2018
 ## About Mecenas
 
 Mecenas is a decentralized, [Patreon-like,](https://patreon.com) mobile friendly application where content creators (artist, youtubers, streamers, podcasters, editors...) can receive Ether monthly, thanks to their backers, named mecenas.
